@@ -1,90 +1,131 @@
 <?php
 
+namespace Tests\Feature\Auth;
+
 use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
+use PHPUnit\Framework\Attributes\DataProvider;
+use Tests\TestCase;
 
-test('users without a username are redirected to choose one', function (string $route) {
-    $user = User::factory()->withoutUsername()->create();
+class ChooseUsernameTest extends TestCase
+{
+    use RefreshDatabase;
 
-    $this->actingAs($user)
-        ->get(route($route))
-        ->assertRedirect(route('username.create'));
-})->with(['dashboard', 'profile.edit', 'partner.search', 'appearance.edit']);
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function gatedRoutes(): array
+    {
+        return [
+            'dashboard' => ['dashboard'],
+            'profile.edit' => ['profile.edit'],
+            'partner.search' => ['partner.search'],
+            'appearance.edit' => ['appearance.edit'],
+        ];
+    }
 
-test('users without a username can view the choose username page', function () {
-    $user = User::factory()->withoutUsername()->create();
+    #[DataProvider('gatedRoutes')]
+    public function test_users_without_a_username_are_redirected_to_choose_one(string $route): void
+    {
+        $user = User::factory()->withoutUsername()->create();
 
-    $this->actingAs($user)
-        ->get(route('username.create'))
-        ->assertOk()
-        ->assertSee('Choose a username');
-});
+        $this->actingAs($user)
+            ->get(route($route))
+            ->assertRedirect(route('username.create'));
+    }
 
-test('users can choose a username and continue to the dashboard', function () {
-    $user = User::factory()->withoutUsername()->create();
+    public function test_users_without_a_username_can_view_the_choose_username_page(): void
+    {
+        $user = User::factory()->withoutUsername()->create();
 
-    $this->actingAs($user);
+        $this->actingAs($user)
+            ->get(route('username.create'))
+            ->assertOk()
+            ->assertSee('Choose a username');
+    }
 
-    Livewire::test('pages::auth.choose-username')
-        ->set('username', ' Kyle ')
-        ->call('save')
-        ->assertHasNoErrors()
-        ->assertRedirect(route('dashboard', absolute: false));
+    public function test_users_can_choose_a_username_and_continue_to_the_dashboard(): void
+    {
+        $user = User::factory()->withoutUsername()->create();
 
-    expect($user->refresh()->username)->toBe('kyle');
+        $this->actingAs($user);
 
-    $this->get(route('dashboard'))->assertOk();
-});
+        Livewire::test('pages::auth.choose-username')
+            ->set('username', ' Kyle ')
+            ->call('save')
+            ->assertHasNoErrors()
+            ->assertRedirect(route('dashboard', absolute: false));
 
-test('users are returned to the page they originally asked for', function () {
-    $user = User::factory()->withoutUsername()->create();
+        $this->assertSame('kyle', $user->refresh()->username);
 
-    $this->actingAs($user)->get(route('partner.search'));
+        $this->get(route('dashboard'))->assertOk();
+    }
 
-    Livewire::test('pages::auth.choose-username')
-        ->set('username', 'kyle')
-        ->call('save')
-        ->assertRedirect(route('partner.search'));
-});
+    public function test_users_are_returned_to_the_page_they_originally_asked_for(): void
+    {
+        $user = User::factory()->withoutUsername()->create();
 
-test('chosen usernames are validated', function (string $username) {
-    User::factory()->create(['username' => 'harry']);
-    $user = User::factory()->withoutUsername()->create();
+        $this->actingAs($user)->get(route('partner.search'));
 
-    $this->actingAs($user);
+        Livewire::test('pages::auth.choose-username')
+            ->set('username', 'kyle')
+            ->call('save')
+            ->assertRedirect(route('partner.search'));
+    }
 
-    Livewire::test('pages::auth.choose-username')
-        ->set('username', $username)
-        ->call('save')
-        ->assertHasErrors('username');
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function invalidUsernames(): array
+    {
+        return [
+            'empty' => [''],
+            'too short' => ['ab'],
+            'invalid characters' => ['kyle!'],
+            'reserved' => ['admin'],
+            'taken in another case' => ['HARRY'],
+        ];
+    }
 
-    expect($user->refresh()->username)->toBeNull();
-})->with([
-    'empty' => '',
-    'too short' => 'ab',
-    'invalid characters' => 'kyle!',
-    'reserved' => 'admin',
-    'taken in another case' => 'HARRY',
-]);
+    #[DataProvider('invalidUsernames')]
+    public function test_chosen_usernames_are_validated(string $username): void
+    {
+        User::factory()->create(['username' => 'harry']);
+        $user = User::factory()->withoutUsername()->create();
 
-test('users who already have a username are sent to the dashboard', function () {
-    $user = User::factory()->create(['username' => 'kyle']);
+        $this->actingAs($user);
 
-    $this->actingAs($user)
-        ->get(route('username.create'))
-        ->assertRedirect(route('dashboard'));
-});
+        Livewire::test('pages::auth.choose-username')
+            ->set('username', $username)
+            ->call('save')
+            ->assertHasErrors('username');
 
-test('users without a username can still log out', function () {
-    $user = User::factory()->withoutUsername()->create();
+        $this->assertNull($user->refresh()->username);
+    }
 
-    $this->actingAs($user)
-        ->post(route('logout'))
-        ->assertRedirect('/');
+    public function test_users_who_already_have_a_username_are_sent_to_the_dashboard(): void
+    {
+        $user = User::factory()->create(['username' => 'kyle']);
 
-    $this->assertGuest();
-});
+        $this->actingAs($user)
+            ->get(route('username.create'))
+            ->assertRedirect(route('dashboard'));
+    }
 
-test('guests cannot view the choose username page', function () {
-    $this->get(route('username.create'))->assertRedirect(route('login'));
-});
+    public function test_users_without_a_username_can_still_log_out(): void
+    {
+        $user = User::factory()->withoutUsername()->create();
+
+        $this->actingAs($user)
+            ->post(route('logout'))
+            ->assertRedirect('/');
+
+        $this->assertGuest();
+    }
+
+    public function test_guests_cannot_view_the_choose_username_page(): void
+    {
+        $this->get(route('username.create'))->assertRedirect(route('login'));
+    }
+}

@@ -45,7 +45,7 @@ critical defect.
 
 ### IV. Tested Behaviour
 
-Every user-facing feature MUST ship with automated tests (Pest or PHPUnit) run inside
+Every user-facing feature MUST ship with automated tests (class-based PHPUnit) run inside
 Docker. At minimum:
 - Feature/Livewire component tests covering the primary happy path and validation errors.
 - Authorization tests proving that a user outside the couple cannot view or modify the
@@ -83,7 +83,8 @@ Rationale: a two-person app does not need enterprise complexity.
 - Runtime: Docker / Docker Compose for all environments.
 - Database: a relational database run as a container (MySQL, MariaDB, or PostgreSQL),
   with all schema changes made through Laravel migrations; SQLite is acceptable for tests.
-- Testing: Pest (preferred) or PHPUnit, executed in containers.
+- Testing: PHPUnit with class-based tests extending `Tests\TestCase`, executed in containers.
+  Pest is not used.
 - Code style: Laravel Pint MUST pass.
 - Secrets MUST live in `.env` files that are not committed; `.env.example` MUST be kept
   current.
@@ -107,4 +108,4 @@ or redefining a principle, MINOR for adding a principle or materially expanding 
 PATCH for clarifications and wording. All specs, plans, and reviews MUST verify compliance;
 unjustified complexity or any breach of Principle III blocks a change.
 
-**Version**: 1.0.0 | **Ratified**: 2026-11-06 | **Last Amended**: 2026-11-06
+**Version**: 1.1.0 | **Ratified**: 2026-11-06 | **Last Amended**: 2026-11-06

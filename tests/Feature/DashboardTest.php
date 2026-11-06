@@ -1,33 +1,46 @@
 <?php
 
+namespace Tests\Feature;
+
 use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
 
-test('guests are redirected to the login page', function () {
-    $response = $this->get(route('dashboard'));
-    $response->assertRedirect(route('login'));
-});
+class DashboardTest extends TestCase
+{
+    use RefreshDatabase;
 
-test('authenticated users can visit the dashboard', function () {
-    $user = User::factory()->create();
-    $this->actingAs($user);
+    public function test_guests_are_redirected_to_the_login_page(): void
+    {
+        $response = $this->get(route('dashboard'));
+        $response->assertRedirect(route('login'));
+    }
 
-    $response = $this->get(route('dashboard'));
-    $response->assertOk();
-});
+    public function test_authenticated_users_can_visit_the_dashboard(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
 
-test('dashboard greets the user by name', function () {
-    $user = User::factory()->create(['name' => 'Sam']);
+        $response = $this->get(route('dashboard'));
+        $response->assertOk();
+    }
 
-    $this->actingAs($user)
-        ->get(route('dashboard'))
-        ->assertOk()
-        ->assertSee('Welcome, Sam');
-});
+    public function test_dashboard_greets_the_user_by_name(): void
+    {
+        $user = User::factory()->create(['name' => 'Sam']);
 
-test('unverified users can still reach the dashboard', function () {
-    $user = User::factory()->unverified()->create();
+        $this->actingAs($user)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('Welcome, Sam');
+    }
 
-    $this->actingAs($user)
-        ->get(route('dashboard'))
-        ->assertOk();
-});
+    public function test_unverified_users_can_still_reach_the_dashboard(): void
+    {
+        $user = User::factory()->unverified()->create();
+
+        $this->actingAs($user)
+            ->get(route('dashboard'))
+            ->assertOk();
+    }
+}
