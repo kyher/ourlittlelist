@@ -21,6 +21,15 @@ export default defineConfig({
         tailwindcss(),
     ]),
     server: {
+        // Listen on all interfaces so the dev server is reachable from outside the
+        // vite container, but tell the browser to connect via localhost.
+        host: '0.0.0.0',
+        port: 5173,
+        strictPort: true,
+        hmr: {
+            host: 'localhost',
+            clientPort: Number(process.env.VITE_PORT ?? 5173),
+        },
         cors: true,
         watch: {
             ignored: [

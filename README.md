@@ -5,7 +5,7 @@ things they experience together, such as films, series, books, food and restaura
 can compare notes and keep a list of what they've loved (or not).
 
 Built with Laravel 13 and the official Livewire starter kit (Livewire 4, Flux UI, Fortify),
-and run entirely in Docker via [Laravel Sail](https://laravel.com/docs/sail).
+and run entirely in Docker with Docker Compose.
 
 ## Prerequisites
 
@@ -13,53 +13,41 @@ and run entirely in Docker via [Laravel Sail](https://laravel.com/docs/sail).
 
 That's it. You don't need PHP, Composer or Node on your machine: everything runs in containers.
 
-## First-time setup
+## Getting started
 
 ```bash
-# 1. Install PHP dependencies using a throwaway container (creates vendor/, which includes Sail)
-docker run --rm \
-    -u "$(id -u):$(id -g)" \
-    -v "$(pwd):/var/www/html" \
-    -w /var/www/html \
-    laravelsail/php84-composer:latest \
-    composer install --ignore-platform-reqs
-
-# 2. Create your local environment file
-cp .env.example .env
-
-# 3. Start the containers (app, MySQL, Mailpit)
-./vendor/bin/sail up -d
-
-# 4. Generate the app key and create the database schema
-./vendor/bin/sail artisan key:generate
-./vendor/bin/sail artisan migrate
-
-# 5. Install and build front-end assets
-./vendor/bin/sail npm install
-./vendor/bin/sail npm run build
+docker compose up
 ```
 
-Open <http://localhost> (or the port you set in `APP_PORT`).
+The first run builds the app image and takes a few minutes. Each start then:
 
-> **Tip:** add `alias sail='sh $([ -f sail ] && echo sail || echo vendor/bin/sail)'` to your shell
-> profile so you can type `sail …` instead of `./vendor/bin/sail …`. The rest of this README uses
-> the short form.
+- installs PHP and Node dependencies (fast when nothing has changed),
+- creates `.env` from `.env.example` and generates an app key if they're missing,
+- runs any pending migrations,
+- serves the app at <http://localhost> with the Vite dev server (hot reload) alongside it.
+
+Add `-d` to run in the background. Because dependencies and migrations are applied on every
+start, pulling new changes only needs a `docker compose up` (or `docker compose restart app vite`).
 
 ## Everyday commands
 
+Commands run inside the `app` container with `docker compose exec app …`. A shell alias saves
+typing, e.g. `alias dc='docker compose exec app'`.
+
 | What | Command |
 |------|---------|
-| Start the stack | `sail up -d` |
-| Stop the stack | `sail stop` (data is kept) |
-| Front-end dev server with hot reload | `sail npm run dev` |
-| Build front-end assets once | `sail npm run build` |
-| Run the test suite | `sail artisan test` |
-| Check code style | `sail bin pint --test` |
-| Fix code style | `sail bin pint` |
-| Run new migrations | `sail artisan migrate` |
-| Rebuild the database from scratch (**deletes all data**) | `sail artisan migrate:fresh` |
-| Open a shell in the app container | `sail shell` |
-| Remove containers **and** the database volume | `sail down -v` |
+| Start the stack | `docker compose up -d` |
+| Follow the logs | `docker compose logs -f app vite` |
+| Stop the stack | `docker compose stop` (data is kept) |
+| Run the full CI check (Pint, Larastan, tests) | `docker compose exec app composer ci:check` |
+| Run the test suite | `docker compose exec app php artisan test` |
+| Fix code style | `docker compose exec app composer lint` |
+| Run an Artisan command | `docker compose exec app php artisan <command>` |
+| Rebuild the database from scratch (**deletes all data**) | `docker compose exec app php artisan migrate:fresh` |
+| Build front-end assets once (without the dev server) | `docker compose exec vite npm run build` |
+| Open a shell in the app container | `docker compose exec app bash` |
+| Rebuild the app image (after changing `docker/app/`) | `docker compose build` |
+| Remove containers **and** the database volume | `docker compose down -v` |
 
 ### Viewing emails
 
@@ -69,7 +57,7 @@ captured by Mailpit at <http://localhost:8025>.
 ## Changing ports
 
 If a port is already taken on your machine, override it in `.env` (no committed files need to
-change), then run `sail up -d` again:
+change), then run `docker compose up -d` again:
 
 | Variable | Default | Used for |
 |----------|---------|----------|
@@ -79,13 +67,26 @@ change), then run `sail up -d` again:
 | `FORWARD_MAILPIT_PORT` | `1025` | Mailpit SMTP |
 | `FORWARD_MAILPIT_DASHBOARD_PORT` | `8025` | Mailpit web UI |
 
+## How it's put together
+
+- `compose.yaml` defines four services: `app` (`php artisan serve`), `vite` (`npm run dev`),
+  `mysql` and `mailpit`. `app` and `vite` share one image and bind-mount the project.
+- `docker/app/Dockerfile` is the toolchain image: PHP 8.4 with the needed extensions, Composer
+  and Node 24. It runs as a user matching UID/GID 1000 so files it writes are owned by you. If
+  your host user has a different ID, build with `UID=$(id -u) GID=$(id -g) docker compose build`.
+- `docker/app/entrypoint.sh` does the install/setup steps listed above before each service starts.
+
 ## Troubleshooting
 
-- **The page has no styling or shows a Vite manifest error.** Assets haven't been built. Run
-  `sail npm run build`, or keep `sail npm run dev` running.
-- **"Connection refused" or database errors right after `sail up`.** MySQL is still starting.
-  Wait until `sail ps` shows the `mysql` service as `healthy`, then retry.
-- **`sail up` fails with "port is already allocated".** See [Changing ports](#changing-ports).
+- **The page has no styling or shows a Vite manifest error.** The `vite` service isn't running.
+  Check `docker compose logs vite`, or build the assets once with
+  `docker compose exec vite npm run build`.
+- **The app doesn't respond right after `docker compose up`.** It waits for MySQL to be healthy,
+  then installs dependencies and migrates. Watch `docker compose logs -f app` until it prints
+  "Server running".
+- **`docker compose up` fails with "port is already allocated".** See [Changing ports](#changing-ports).
+- **Permission errors writing to `storage/` or `vendor/`.** Your host UID/GID isn't 1000; rebuild
+  as described in [How it's put together](#how-its-put-together).
 
 ## Project process
 
