@@ -2,6 +2,7 @@
 
 use App\Concerns\ProfileValidationRules;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
@@ -13,6 +14,7 @@ new #[Title('Profile settings')] class extends Component {
     use ProfileValidationRules;
 
     public string $name = '';
+    public string $username = '';
     public string $email = '';
 
     /**
@@ -21,6 +23,7 @@ new #[Title('Profile settings')] class extends Component {
     public function mount(): void
     {
         $this->name = Auth::user()->name;
+        $this->username = Auth::user()->username ?? '';
         $this->email = Auth::user()->email;
     }
 
@@ -31,7 +34,9 @@ new #[Title('Profile settings')] class extends Component {
     {
         $user = Auth::user();
 
-        $validated = $this->validate($this->profileRules($user->id));
+        $this->username = $this->normaliseUsername($this->username);
+
+        $validated = $this->validate($this->profileRules($user->id), $this->usernameMessages());
 
         $user->fill($validated);
 
@@ -39,7 +44,17 @@ new #[Title('Profile settings')] class extends Component {
             $user->email_verified_at = null;
         }
 
-        $user->save();
+        try {
+            $user->save();
+        } catch (UniqueConstraintViolationException $e) {
+            if (! str_contains($e->getMessage(), 'username')) {
+                throw $e;
+            }
+
+            $this->addError('username', __('That username is taken.'));
+
+            return;
+        }
 
         Flux::toast(variant: 'success', text: __('Profile updated.'));
     }
@@ -81,9 +96,18 @@ new #[Title('Profile settings')] class extends Component {
 
     <flux:heading level="2" class="sr-only">{{ __('Profile settings') }}</flux:heading>
 
-    <x-pages::settings.layout :heading="__('Profile')" :subheading="__('Update your name and email address')">
+    <x-pages::settings.layout :heading="__('Profile')" :subheading="__('Update your name, username and email address')">
         <form wire:submit="updateProfileInformation" class="my-6 w-full space-y-6">
             <flux:input wire:model="name" :label="__('Name')" type="text" required autofocus autocomplete="name" />
+
+            <flux:input
+                wire:model="username"
+                :label="__('Username')"
+                :description:trailing="__('Your partner uses this to find you.')"
+                type="text"
+                required
+                autocomplete="username"
+            />
 
             <div>
                 <flux:input wire:model="email" :label="__('Email')" type="email" required autocomplete="email" />

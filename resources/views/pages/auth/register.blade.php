@@ -19,6 +19,18 @@
                 :placeholder="__('Full name')"
             />
 
+            <!-- Username -->
+            <flux:input
+                name="username"
+                :label="__('Username')"
+                :value="old('username')"
+                :description:trailing="__('3–30 characters: letters, numbers, _ and . Your partner uses this to find you.')"
+                type="text"
+                required
+                autocomplete="username"
+                :placeholder="__('e.g. harry')"
+            />
+
             <!-- Email Address -->
             <flux:input
                 name="email"
