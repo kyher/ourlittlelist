@@ -5,7 +5,9 @@ namespace App\Actions\Fortify;
 use App\Concerns\PasswordValidationRules;
 use App\Concerns\ProfileValidationRules;
 use App\Models\User;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Contracts\CreatesNewUsers;
 
 class CreateNewUser implements CreatesNewUsers
@@ -19,15 +21,28 @@ class CreateNewUser implements CreatesNewUsers
      */
     public function create(array $input): User
     {
+        $input['username'] = $this->normaliseUsername($input['username'] ?? null);
+
         Validator::make($input, [
             ...$this->profileRules(),
             'password' => $this->passwordRules(),
-        ])->validate();
+        ], $this->usernameMessages())->validate();
 
-        return User::create([
-            'name' => $input['name'],
-            'email' => $input['email'],
-            'password' => $input['password'],
-        ]);
+        try {
+            return User::create([
+                'name' => $input['name'],
+                'username' => $input['username'],
+                'email' => $input['email'],
+                'password' => $input['password'],
+            ]);
+        } catch (UniqueConstraintViolationException $e) {
+            if (! str_contains($e->getMessage(), 'username')) {
+                throw $e;
+            }
+
+            throw ValidationException::withMessages([
+                'username' => __('That username is taken.'),
+            ]);
+        }
     }
 }

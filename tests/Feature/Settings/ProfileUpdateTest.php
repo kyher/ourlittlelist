@@ -16,6 +16,7 @@ test('profile information can be updated', function () {
 
     $response = Livewire::test('pages::settings.profile')
         ->set('name', 'Test User')
+        ->set('username', 'test_user')
         ->set('email', 'test@example.com')
         ->call('updateProfileInformation');
 
@@ -24,6 +25,7 @@ test('profile information can be updated', function () {
     $user->refresh();
 
     expect($user->name)->toEqual('Test User');
+    expect($user->username)->toEqual('test_user');
     expect($user->email)->toEqual('test@example.com');
     expect($user->email_verified_at)->toBeNull();
 });
@@ -72,4 +74,66 @@ test('correct password must be provided to delete account', function () {
     $response->assertHasErrors(['password']);
 
     expect($user->fresh())->not->toBeNull();
+});
+
+test('profile page shows the current username', function () {
+    $user = User::factory()->create(['username' => 'kyle']);
+
+    $this->actingAs($user);
+
+    Livewire::test('pages::settings.profile')->assertSet('username', 'kyle');
+});
+
+test('username can be changed and is stored lowercase', function () {
+    $user = User::factory()->create(['username' => 'kyle']);
+
+    $this->actingAs($user);
+
+    Livewire::test('pages::settings.profile')
+        ->set('username', ' Kyle_H ')
+        ->call('updateProfileInformation')
+        ->assertHasNoErrors();
+
+    expect($user->refresh()->username)->toBe('kyle_h');
+    expect(User::where('username', 'kyle')->exists())->toBeFalse();
+});
+
+test('username cannot be changed to one that is already taken', function () {
+    User::factory()->create(['username' => 'harry']);
+    $user = User::factory()->create(['username' => 'kyle']);
+
+    $this->actingAs($user);
+
+    Livewire::test('pages::settings.profile')
+        ->set('username', 'Harry')
+        ->call('updateProfileInformation')
+        ->assertHasErrors('username');
+
+    expect($user->refresh()->username)->toBe('kyle');
+});
+
+test('saving with an unchanged username succeeds', function () {
+    $user = User::factory()->create(['username' => 'kyle']);
+
+    $this->actingAs($user);
+
+    Livewire::test('pages::settings.profile')
+        ->set('name', 'Kyle Renamed')
+        ->call('updateProfileInformation')
+        ->assertHasNoErrors();
+
+    expect($user->refresh()->name)->toBe('Kyle Renamed');
+});
+
+test('username cannot be changed to a reserved word', function () {
+    $user = User::factory()->create(['username' => 'kyle']);
+
+    $this->actingAs($user);
+
+    Livewire::test('pages::settings.profile')
+        ->set('username', 'settings')
+        ->call('updateProfileInformation')
+        ->assertHasErrors('username');
+
+    expect($user->refresh()->username)->toBe('kyle');
 });
