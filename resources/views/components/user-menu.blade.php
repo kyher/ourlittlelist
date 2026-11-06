@@ -1,9 +1,7 @@
-<flux:dropdown position="bottom" align="start">
-    <flux:sidebar.profile
-        :name="auth()->user()->name"
+<flux:dropdown position="bottom" align="end">
+    <flux:profile
         :initials="auth()->user()->initials()"
-        icon:trailing="chevrons-up-down"
-        data-test="sidebar-menu-button"
+        icon-trailing="chevron-down"
     />
 
     <flux:menu>
@@ -17,7 +15,9 @@
                 <flux:text class="truncate">{{ auth()->user()->email }}</flux:text>
             </div>
         </div>
+
         <flux:menu.separator />
+
         <flux:menu.radio.group>
             <flux:menu.item :href="route('profile.edit')" icon="cog" wire:navigate>
                 {{ __('Settings') }}

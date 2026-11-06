@@ -52,12 +52,12 @@ class RegistrationTest extends TestCase
         ]);
 
         $response->assertSessionHasNoErrors()
-            ->assertRedirect(route('dashboard', absolute: false));
+            ->assertRedirect(route('partner.search', absolute: false));
 
         $this->assertAuthenticated();
     }
 
-    public function test_newly_registered_users_land_on_the_dashboard_without_verifying_their_email(): void
+    public function test_newly_registered_users_reach_partner_search_without_verifying_their_email(): void
     {
         $this->post(route('register.store'), [
             'name' => 'Jane Doe',
@@ -67,7 +67,7 @@ class RegistrationTest extends TestCase
             'password_confirmation' => 'password',
         ]);
 
-        $this->get(route('dashboard'))->assertOk();
+        $this->get(route('partner.search'))->assertOk();
     }
 
     public function test_users_cannot_register_with_an_email_that_is_already_taken(): void
