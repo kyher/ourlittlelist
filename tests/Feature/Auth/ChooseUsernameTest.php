@@ -18,7 +18,6 @@ class ChooseUsernameTest extends TestCase
     public static function gatedRoutes(): array
     {
         return [
-            'dashboard' => ['dashboard'],
             'profile.edit' => ['profile.edit'],
             'partner.search' => ['partner.search'],
             'appearance.edit' => ['appearance.edit'],
@@ -45,7 +44,7 @@ class ChooseUsernameTest extends TestCase
             ->assertSee('Choose a username');
     }
 
-    public function test_users_can_choose_a_username_and_continue_to_the_dashboard(): void
+    public function test_users_can_choose_a_username_and_continue_to_partner_search(): void
     {
         $user = User::factory()->withoutUsername()->create();
 
@@ -55,11 +54,11 @@ class ChooseUsernameTest extends TestCase
             ->set('username', ' Kyle ')
             ->call('save')
             ->assertHasNoErrors()
-            ->assertRedirect(route('dashboard', absolute: false));
+            ->assertRedirect(route('partner.search', absolute: false));
 
         $this->assertSame('kyle', $user->refresh()->username);
 
-        $this->get(route('dashboard'))->assertOk();
+        $this->get(route('partner.search'))->assertOk();
     }
 
     public function test_users_are_returned_to_the_page_they_originally_asked_for(): void
@@ -104,13 +103,13 @@ class ChooseUsernameTest extends TestCase
         $this->assertNull($user->refresh()->username);
     }
 
-    public function test_users_who_already_have_a_username_are_sent_to_the_dashboard(): void
+    public function test_users_who_already_have_a_username_are_sent_to_partner_search(): void
     {
         $user = User::factory()->create(['username' => 'kyle']);
 
         $this->actingAs($user)
             ->get(route('username.create'))
-            ->assertRedirect(route('dashboard'));
+            ->assertRedirect(route('partner.search'));
     }
 
     public function test_users_without_a_username_can_still_log_out(): void

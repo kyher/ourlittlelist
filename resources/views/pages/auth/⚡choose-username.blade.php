@@ -18,7 +18,7 @@ new #[Layout('layouts::auth')] #[Title('Choose a username')] class extends Compo
     public function mount(): void
     {
         if (Auth::user()->username !== null) {
-            $this->redirectRoute('dashboard', navigate: true);
+            $this->redirectRoute('partner.search', navigate: true);
         }
     }
 
@@ -42,7 +42,7 @@ new #[Layout('layouts::auth')] #[Title('Choose a username')] class extends Compo
             return;
         }
 
-        $this->redirectIntended(default: route('dashboard', absolute: false), navigate: true);
+        $this->redirectIntended(default: route('partner.search', absolute: false), navigate: true);
     }
 }; ?>
 

@@ -9,7 +9,6 @@ Route::livewire('username', 'pages::auth.choose-username')
     ->name('username.create');
 
 Route::middleware(['auth', 'verified', 'has-username'])->group(function () {
-    Route::view('dashboard', 'dashboard')->name('dashboard');
     Route::livewire('partner/search', 'pages::partner.search')->name('partner.search');
 });
 
