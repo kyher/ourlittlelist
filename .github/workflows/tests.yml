@@ -13,6 +13,13 @@ jobs:
   ci:
     runs-on: ubuntu-latest
 
+    # .env.example targets the Sail MySQL container (DB_HOST=mysql), which doesn't exist
+    # on the runner. Real env vars take precedence over .env, so use SQLite here instead.
+    # Tests themselves always use in-memory SQLite (phpunit.xml).
+    env:
+      DB_CONNECTION: sqlite
+      DB_DATABASE: ${{ github.workspace }}/database/database.sqlite
+
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
