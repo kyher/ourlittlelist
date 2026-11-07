@@ -110,4 +110,64 @@ class Item extends Model
     {
         $query->whereBelongsTo($couple);
     }
+
+    /**
+     * Items the given member has reviewed (spec 007, FR-002).
+     *
+     * @param  Builder<Item>  $query
+     */
+    public function scopeReviewedBy(Builder $query, User $user): void
+    {
+        $query->whereHas('reviews', fn (Builder $reviews) => $reviews->where('user_id', $user->id));
+    }
+
+    /**
+     * Items the given member has not reviewed (spec 007, FR-003).
+     *
+     * @param  Builder<Item>  $query
+     */
+    public function scopeNotReviewedBy(Builder $query, User $user): void
+    {
+        $query->whereDoesntHave('reviews', fn (Builder $reviews) => $reviews->where('user_id', $user->id));
+    }
+
+    /**
+     * Items whose title contains the search text, ignoring case and surrounding spaces. `%` and
+     * `_` are matched literally. `!` is the escape character because a backslash needs different
+     * quoting in MySQL and SQLite (spec 007, research R3).
+     *
+     * @param  Builder<Item>  $query
+     */
+    public function scopeTitleContains(Builder $query, string $search): void
+    {
+        $term = self::keyFor($search);
+
+        if ($term === '') {
+            return;
+        }
+
+        $escaped = str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $term);
+
+        $query->whereRaw("title_key like ? escape '!'", ['%'.$escaped.'%']);
+    }
+
+    /**
+     * Order by the given member's rating, highest first. Items they haven't rated come last, and
+     * ties fall back to most recent activity (spec 007, FR-008, research R4).
+     *
+     * @param  Builder<Item>  $query
+     */
+    public function scopeOrderByRatingOf(Builder $query, User $user): void
+    {
+        $rating = Review::query()
+            ->select('rating')
+            ->whereColumn('reviews.item_id', 'items.id')
+            ->where('reviews.user_id', $user->id);
+
+        $query->addSelect(['sort_rating' => $rating])
+            ->orderByRaw('sort_rating is null')
+            ->orderByDesc('sort_rating')
+            ->latest('updated_at')
+            ->latest('id');
+    }
 }

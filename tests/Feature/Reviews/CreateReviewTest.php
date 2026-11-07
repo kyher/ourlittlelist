@@ -111,6 +111,17 @@ class CreateReviewTest extends TestCase
         $this->assertSame(0, Item::count());
     }
 
+    public function test_category_starts_on_the_placeholder(): void
+    {
+        // With null, no option matched, so the browser showed "Film" as chosen while the value
+        // stayed empty, and picking Film sent no change ("Category is required").
+        Livewire::actingAs($this->kyle)->test('pages::reviews.create')
+            ->assertSet('form.category', '')
+            ->assertSeeHtml('<option value="" disabled selected class="placeholder">')
+            ->call('save')
+            ->assertHasErrors(['form.category' => 'required']);
+    }
+
     public function test_unknown_category_is_refused(): void
     {
         $this->createAs($this->kyle, ['category' => 'podcast'])

@@ -12,7 +12,12 @@ use Livewire\Form;
  */
 class ReviewForm extends Form
 {
-    public ?string $category = null;
+    /**
+     * Starts as '' (not null) to match the select's placeholder option. With null nothing matches,
+     * so the browser shows the first option (Film) as chosen while the value stays empty, and
+     * picking Film then sends no change.
+     */
+    public ?string $category = '';
 
     public string $title = '';
 

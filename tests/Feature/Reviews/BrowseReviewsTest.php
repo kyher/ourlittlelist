@@ -101,7 +101,8 @@ class BrowseReviewsTest extends TestCase
 
         Livewire::actingAs($this->kyle)->test('pages::reviews.index')
             ->set('category', 'book')
-            ->assertSee('No book reviews yet.')
+            ->assertSeeHtml('data-test="reviews-no-matches"')
+            ->assertSee('Nothing matches your search and filters.')
             ->assertDontSee('Paddington 2');
     }
 

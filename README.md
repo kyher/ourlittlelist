@@ -88,6 +88,9 @@ show, book, food or restaurant:
   partner's review.
 - **Editing and removing**: you can only edit or remove your own review. Removing the last review
   of an item removes the item.
+- **Finding things**: the list can be searched by name, filtered by category and by who reviewed
+  it (you, your partner, or waiting for your review), and sorted by either partner's highest
+  rating. The choices stay in the address, so links and reloads keep them.
 
 Reviews are private to the couple and are deleted when the couple ends.
 

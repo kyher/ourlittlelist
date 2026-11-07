@@ -2,9 +2,12 @@
 
 use App\Actions\Reviews\DismissReviewPrompt;
 use App\Enums\ReviewCategory;
+use App\Enums\ReviewShow;
+use App\Enums\ReviewSort;
 use App\Models\Item;
 use App\Models\Review;
 use App\Models\ReviewPrompt;
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
@@ -17,6 +20,32 @@ new #[Title('Reviews')] class extends Component {
      */
     #[Url]
     public ?string $category = null;
+
+    /**
+     * Who reviewed it: a ReviewShow value. Unknown values mean "all" (spec 007, FR-001).
+     */
+    #[Url(except: 'all')]
+    public string $show = 'all';
+
+    /**
+     * Title search (spec 007, FR-005).
+     */
+    #[Url(as: 'q', except: '')]
+    public string $search = '';
+
+    /**
+     * Order: a ReviewSort value. Unknown values mean "recent" (spec 007, FR-007).
+     */
+    #[Url(except: 'recent')]
+    public string $sort = 'recent';
+
+    /**
+     * Reset the filters and search, but keep the sort (spec 007, FR-011).
+     */
+    public function clearFilters(): void
+    {
+        $this->reset('category', 'show', 'search');
+    }
 
     /**
      * Hide a prompt for good (FR-016). Only the user's own prompts resolve.
@@ -65,13 +94,56 @@ new #[Title('Reviews')] class extends Component {
     }
 
     #[Computed]
-    public function partnerName(): string
+    public function showFilter(): ReviewShow
     {
-        return Auth::user()->partner()->name ?? __('Your partner');
+        return ReviewShow::tryFrom($this->show) ?? ReviewShow::All;
+    }
+
+    #[Computed]
+    public function sortOrder(): ReviewSort
+    {
+        return ReviewSort::tryFrom($this->sort) ?? ReviewSort::Recent;
     }
 
     /**
-     * The couple's items, most recent review activity first, with both partners' stars (FR-018).
+     * The search text actually used: trimmed and at most 100 characters (spec 007, FR-005).
+     */
+    #[Computed]
+    public function searchTerm(): string
+    {
+        return mb_substr(trim($this->search), 0, 100);
+    }
+
+    #[Computed]
+    public function isFiltered(): bool
+    {
+        return $this->filter !== null || $this->showFilter !== ReviewShow::All || $this->searchTerm !== '';
+    }
+
+    #[Computed]
+    public function partner(): ?User
+    {
+        return Auth::user()->partner();
+    }
+
+    #[Computed]
+    public function partnerName(): string
+    {
+        return $this->partner->name ?? __('Your partner');
+    }
+
+    /**
+     * Whether the couple has any items at all, to tell "no reviews yet" from "nothing matches".
+     */
+    #[Computed]
+    public function hasItems(): bool
+    {
+        return Item::forCouple(Auth::user()->couple)->exists();
+    }
+
+    /**
+     * The couple's items with both partners' stars, filtered by category, who reviewed them and
+     * title, in the chosen order (FR-018; spec 007, FR-009).
      *
      * @return list<array{id: int, title: string, category_label: string, my_stars: float|null, partner_stars: float|null}>
      */
@@ -79,12 +151,34 @@ new #[Title('Reviews')] class extends Component {
     public function items(): array
     {
         $user = Auth::user();
+        $partner = $this->partner;
 
-        return Item::forCouple($user->couple)
+        $query = Item::forCouple($user->couple)
             ->when($this->filter, fn ($query, ReviewCategory $category) => $query->where('category', $category))
-            ->with('reviews')
-            ->latest('updated_at')
-            ->latest('id')
+            ->titleContains($this->searchTerm)
+            ->with('reviews');
+
+        // Without a partner (the couple is ending), partner-based options match nothing (research R7).
+        match ($this->showFilter) {
+            ReviewShow::All => null,
+            ReviewShow::Mine => $query->reviewedBy($user),
+            ReviewShow::Partner => $partner ? $query->reviewedBy($partner) : $query->whereRaw('1 = 0'),
+            ReviewShow::Waiting => $partner ? $query->reviewedBy($partner)->notReviewedBy($user) : $query->whereRaw('1 = 0'),
+        };
+
+        $ratedBy = match ($this->sortOrder) {
+            ReviewSort::Recent => null,
+            ReviewSort::Mine => $user,
+            ReviewSort::Partner => $partner,
+        };
+
+        if ($ratedBy) {
+            $query->orderByRatingOf($ratedBy);
+        } else {
+            $query->latest('updated_at')->latest('id');
+        }
+
+        return $query
             ->get()
             ->map(fn (Item $item) => [
                 'id' => $item->id,
@@ -133,19 +227,48 @@ new #[Title('Reviews')] class extends Component {
         </div>
     @endif
 
-    <div class="mb-4 flex items-center gap-3">
-        <flux:select wire:model.live="category" size="sm" class="max-w-48" :aria-label="__('Filter by category')" data-test="category-filter">
-            <flux:select.option value="">{{ __('All categories') }}</flux:select.option>
-            @foreach (ReviewCategory::cases() as $option)
-                <flux:select.option :value="$option->value">{{ $option->label() }}</flux:select.option>
-            @endforeach
-        </flux:select>
+    <div class="mb-4 flex flex-wrap items-center gap-3">
+        <div class="w-full sm:w-64">
+            <flux:input wire:model.live.debounce.300ms="search" size="sm" icon="magnifying-glass" :placeholder="__('Search by name')" :aria-label="__('Search by name')" maxlength="100" clearable data-test="review-search" />
+        </div>
+
+        <div class="w-full sm:w-56">
+            <flux:select wire:model.live="show" size="sm" :aria-label="__('Show')" data-test="show-filter">
+                @foreach (ReviewShow::cases() as $option)
+                    <flux:select.option :value="$option->value">{{ $option->label($this->partnerName) }}</flux:select.option>
+                @endforeach
+            </flux:select>
+        </div>
+
+        <div class="w-full sm:w-48">
+            <flux:select wire:model.live="category" size="sm" :aria-label="__('Filter by category')" data-test="category-filter">
+                <flux:select.option value="">{{ __('All categories') }}</flux:select.option>
+                @foreach (ReviewCategory::cases() as $option)
+                    <flux:select.option :value="$option->value">{{ $option->label() }}</flux:select.option>
+                @endforeach
+            </flux:select>
+        </div>
+
+        <div class="w-full sm:w-56">
+            <flux:select wire:model.live="sort" size="sm" :aria-label="__('Sort')" data-test="sort-select">
+                @foreach (ReviewSort::cases() as $option)
+                    <flux:select.option :value="$option->value">{{ $option->label($this->partnerName) }}</flux:select.option>
+                @endforeach
+            </flux:select>
+        </div>
+
+        @if ($this->isFiltered)
+            <flux:button size="sm" variant="ghost" icon="x-mark" wire:click="clearFilters" data-test="clear-filters-button">
+                {{ __('Clear filters') }}
+            </flux:button>
+        @endif
     </div>
 
-    @if (count($this->items) === 0 && $this->filter)
-        <flux:text class="py-6 text-center" data-test="reviews-empty">
-            {{ __('No :category reviews yet.', ['category' => mb_strtolower($this->filter->label())]) }}
-        </flux:text>
+    @if (count($this->items) === 0 && $this->hasItems)
+        <div class="py-6 text-center" data-test="reviews-no-matches">
+            <flux:text>{{ __('Nothing matches your search and filters.') }}</flux:text>
+            <flux:button class="mt-3" size="sm" wire:click="clearFilters">{{ __('Clear filters') }}</flux:button>
+        </div>
     @elseif (count($this->items) === 0)
         <flux:card class="text-center" data-test="reviews-empty">
             <flux:heading>{{ __('No reviews yet') }}</flux:heading>
