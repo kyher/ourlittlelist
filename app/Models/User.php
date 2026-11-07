@@ -7,6 +7,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -33,6 +34,8 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read Couple|null $couple
+ * @property-read Collection<int, Review> $reviews
+ * @property-read Collection<int, ReviewPrompt> $reviewPrompts
  */
 #[Fillable(['name', 'username', 'email', 'password'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
@@ -124,6 +127,30 @@ class User extends Authenticatable implements PasskeyUser
     public function receivedCoupleRequests(): HasMany
     {
         return $this->hasMany(CoupleRequest::class, 'receiver_id');
+    }
+
+    /**
+     * @return HasMany<Review, $this>
+     */
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(Review::class);
+    }
+
+    /**
+     * @return HasMany<ReviewPrompt, $this>
+     */
+    public function reviewPrompts(): HasMany
+    {
+        return $this->hasMany(ReviewPrompt::class);
+    }
+
+    /**
+     * How many prompts to review something are waiting for this user (FR-013).
+     */
+    public function openReviewPromptCount(): int
+    {
+        return $this->reviewPrompts()->open()->count();
     }
 
     /**

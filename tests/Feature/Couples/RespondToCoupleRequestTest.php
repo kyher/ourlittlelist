@@ -177,12 +177,12 @@ class RespondToCoupleRequestTest extends TestCase
             ->assertDontSee('kyle@example.com');
     }
 
-    public function test_accepting_from_the_page_redirects_to_the_couple(): void
+    public function test_accepting_from_the_page_redirects_to_reviews(): void
     {
         Livewire::actingAs($this->harry)
             ->test('pages::partner.search')
             ->call('acceptRequest', $this->request->id)
-            ->assertRedirect(route('couple.show'));
+            ->assertRedirect(route('reviews.index'));
 
         $this->assertNotNull($this->harry->refresh()->couple_id);
     }
