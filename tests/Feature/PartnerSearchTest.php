@@ -50,7 +50,7 @@ class PartnerSearchTest extends TestCase
             ->assertHasNoErrors()
             ->assertSee('@harry')
             ->assertSee('Harry')
-            ->assertSet('result', ['username' => 'harry', 'name' => 'Harry']);
+            ->assertSet('result', ['username' => 'harry', 'name' => 'Harry', 'relation' => 'available', 'request_id' => null]);
     }
 
     public function test_search_results_never_expose_the_email_address(): void
