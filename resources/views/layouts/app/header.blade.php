@@ -9,8 +9,13 @@
 
             <x-app-logo href="{{ route('partner.search') }}" wire:navigate />
 
+            @php($promptCount = auth()->user()->isInCouple() ? auth()->user()->openReviewPromptCount() : 0)
+
             <flux:navbar class="-mb-px max-lg:hidden">
                 @if (auth()->user()->isInCouple())
+                    <flux:navbar.item icon="star" :href="route('reviews.index')" :current="request()->routeIs('reviews.*')" :badge="$promptCount ?: null" wire:navigate>
+                        {{ __('Reviews') }}
+                    </flux:navbar.item>
                     <flux:navbar.item icon="heart" :href="route('couple.show')" :current="request()->routeIs('couple.show')" wire:navigate>
                         {{ __('Your partner') }}
                     </flux:navbar.item>
@@ -35,6 +40,9 @@
 
             <flux:sidebar.nav>
                 @if (auth()->user()->isInCouple())
+                    <flux:sidebar.item icon="star" :href="route('reviews.index')" :current="request()->routeIs('reviews.*')" :badge="$promptCount ?: null" wire:navigate>
+                        {{ __('Reviews') }}
+                    </flux:sidebar.item>
                     <flux:sidebar.item icon="heart" :href="route('couple.show')" :current="request()->routeIs('couple.show')" wire:navigate>
                         {{ __('Your partner') }}
                     </flux:sidebar.item>

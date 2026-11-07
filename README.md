@@ -75,6 +75,22 @@ page. Once they accept, both people see **Your partner** (`/couple`) instead. Ei
 end the couple there. Ending a couple **permanently deletes the couple's reviews** for both of
 them. Couple-owned tables must reference `couples.id` with `cascadeOnDelete` so this keeps working.
 
+## Reviews
+
+Once in a couple, people land on **Reviews** (`/reviews`). Either partner can review a film, TV
+show, book, food or restaurant:
+- **Rating and text**: a rating from 0.5 to 5 stars in half-star steps, plus a written review.
+  Both are required.
+- **Prompts**: the first review of something prompts the other partner to review it too. The
+  prompt shows on `/reviews` and as a badge on the nav item, and the partner can answer it or
+  dismiss it.
+- **Comparing**: each item's page shows both reviews side by side, and you can always read your
+  partner's review.
+- **Editing and removing**: you can only edit or remove your own review. Removing the last review
+  of an item removes the item.
+
+Reviews are private to the couple and are deleted when the couple ends.
+
 ## How it's put together
 
 - `compose.yaml` defines four services: `app` (`php artisan serve`), `vite` (`npm run dev`),

@@ -44,13 +44,13 @@ class CouplePagesTest extends TestCase
 
     // US1 ---------------------------------------------------------------
 
-    public function test_a_user_in_a_couple_is_redirected_from_search_to_their_couple(): void
+    public function test_a_user_in_a_couple_is_redirected_from_search_to_their_reviews(): void
     {
         Couple::factory()->withMembers($this->kyle, $this->harry)->create();
 
         $this->actingAs($this->kyle->refresh())
             ->get(route('partner.search'))
-            ->assertRedirect(route('couple.show'));
+            ->assertRedirect(route('reviews.index'));
     }
 
     public function test_a_single_search_result_offers_to_send_a_request(): void

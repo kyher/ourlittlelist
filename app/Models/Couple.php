@@ -18,6 +18,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read Collection<int, User> $members
+ * @property-read Collection<int, Item> $items
  */
 class Couple extends Model
 {
@@ -30,6 +31,14 @@ class Couple extends Model
     public function members(): HasMany
     {
         return $this->hasMany(User::class);
+    }
+
+    /**
+     * @return HasMany<Item, $this>
+     */
+    public function items(): HasMany
+    {
+        return $this->hasMany(Item::class);
     }
 
     /**

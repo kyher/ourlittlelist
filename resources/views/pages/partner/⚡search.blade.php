@@ -40,12 +40,12 @@ new #[Title('Find your partner')] class extends Component {
     public bool $searched = false;
 
     /**
-     * Users already in a couple see their couple instead (FR-001).
+     * Users already in a couple go to their reviews instead (FR-001).
      */
     public function mount(): void
     {
         if (Auth::user()->isInCouple()) {
-            $this->redirectRoute('couple.show', navigate: true);
+            $this->redirectRoute('reviews.index', navigate: true);
         }
     }
 
@@ -123,7 +123,7 @@ new #[Title('Find your partner')] class extends Component {
 
         if ($this->attempt(fn () => $accept($request))) {
             Flux::toast(variant: 'success', text: __('You and :name are now a couple.', ['name' => $request->sender->name]));
-            $this->redirectRoute('couple.show', navigate: true);
+            $this->redirectRoute('reviews.index', navigate: true);
         }
     }
 
@@ -269,6 +269,10 @@ new #[Title('Find your partner')] class extends Component {
 <section class="w-full max-w-lg">
     <flux:heading size="xl" level="1">{{ __('Find your partner') }}</flux:heading>
     <flux:subheading class="mb-6">{{ __('Ask your partner for their username, then search for it here.') }}</flux:subheading>
+
+    @if (session('status'))
+        <flux:callout variant="secondary" icon="information-circle" class="mb-6" :text="session('status')" data-test="status-message" />
+    @endif
 
     @error('requests')
         <flux:callout variant="danger" icon="exclamation-triangle" class="mb-6" :text="$message" />
