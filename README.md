@@ -67,6 +67,14 @@ change), then run `docker compose up -d` again:
 | `FORWARD_MAILPIT_PORT` | `1025` | Mailpit SMTP |
 | `FORWARD_MAILPIT_DASHBOARD_PORT` | `8025` | Mailpit web UI |
 
+## Couples
+
+A user who isn't in a couple uses **Find your partner** (`/partner/search`) to look up their
+partner by exact username and send a request. The other person accepts or rejects it on the same
+page. Once they accept, both people see **Your partner** (`/couple`) instead. Either partner can
+end the couple there. Ending a couple **permanently deletes the couple's reviews** for both of
+them. Couple-owned tables must reference `couples.id` with `cascadeOnDelete` so this keeps working.
+
 ## How it's put together
 
 - `compose.yaml` defines four services: `app` (`php artisan serve`), `vite` (`npm run dev`),

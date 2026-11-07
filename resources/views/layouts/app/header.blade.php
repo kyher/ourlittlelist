@@ -10,9 +10,15 @@
             <x-app-logo href="{{ route('partner.search') }}" wire:navigate />
 
             <flux:navbar class="-mb-px max-lg:hidden">
-                <flux:navbar.item icon="magnifying-glass" :href="route('partner.search')" :current="request()->routeIs('partner.search')" wire:navigate>
-                    {{ __('Find your partner') }}
-                </flux:navbar.item>
+                @if (auth()->user()->isInCouple())
+                    <flux:navbar.item icon="heart" :href="route('couple.show')" :current="request()->routeIs('couple.show')" wire:navigate>
+                        {{ __('Your partner') }}
+                    </flux:navbar.item>
+                @else
+                    <flux:navbar.item icon="magnifying-glass" :href="route('partner.search')" :current="request()->routeIs('partner.search')" wire:navigate>
+                        {{ __('Find your partner') }}
+                    </flux:navbar.item>
+                @endif
             </flux:navbar>
 
             <flux:spacer />
@@ -28,9 +34,15 @@
             </flux:sidebar.header>
 
             <flux:sidebar.nav>
-                <flux:sidebar.item icon="magnifying-glass" :href="route('partner.search')" :current="request()->routeIs('partner.search')" wire:navigate>
-                    {{ __('Find your partner') }}
-                </flux:sidebar.item>
+                @if (auth()->user()->isInCouple())
+                    <flux:sidebar.item icon="heart" :href="route('couple.show')" :current="request()->routeIs('couple.show')" wire:navigate>
+                        {{ __('Your partner') }}
+                    </flux:sidebar.item>
+                @else
+                    <flux:sidebar.item icon="magnifying-glass" :href="route('partner.search')" :current="request()->routeIs('partner.search')" wire:navigate>
+                        {{ __('Find your partner') }}
+                    </flux:sidebar.item>
+                @endif
             </flux:sidebar.nav>
         </flux:sidebar>
 
