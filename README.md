@@ -52,8 +52,11 @@ typing, e.g. `alias dc='docker compose exec app'`.
 
 ### Viewing emails
 
-In development, no real emails are sent. Everything the app sends (e.g. password reset links) is
-captured by Mailpit at <http://localhost:8025>.
+In development, no real emails are sent. Everything the app sends (e.g. verification and password
+reset links) is captured by Mailpit at <http://localhost:8025>.
+
+Any live environment needs working mail settings, because people must verify their email address
+before they can use the app.
 
 ## Changing ports
 

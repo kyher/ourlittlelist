@@ -5,6 +5,7 @@ use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Session;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
@@ -40,7 +41,15 @@ new #[Title('Profile settings')] class extends Component {
 
         $user->fill($validated);
 
-        if ($user->isDirty('email')) {
+        $emailChanged = $user->isDirty('email');
+
+        if ($emailChanged) {
+            if ($this->verificationLinkLimitReached()) {
+                $this->addError('email', __('Too many verification emails. Please try again shortly.'));
+
+                return;
+            }
+
             $user->email_verified_at = null;
         }
 
@@ -56,7 +65,15 @@ new #[Title('Profile settings')] class extends Component {
             return;
         }
 
-        Flux::toast(variant: 'success', text: __('Profile updated.'));
+        if ($emailChanged) {
+            $this->recordVerificationLink();
+
+            $user->sendEmailVerificationNotification();
+        }
+
+        Flux::toast(variant: 'success', text: $emailChanged
+            ? __('Profile updated. Check your new email address for a verification link.')
+            : __('Profile updated.'));
     }
 
     /**
@@ -72,9 +89,31 @@ new #[Title('Profile settings')] class extends Component {
             return;
         }
 
+        if ($this->verificationLinkLimitReached()) {
+            Session::flash('status', 'verification-link-throttled');
+
+            return;
+        }
+
+        $this->recordVerificationLink();
+
         $user->sendEmailVerificationNotification();
 
         Session::flash('status', 'verification-link-sent');
+    }
+
+    /**
+     * Livewire actions do not pass through Fortify's throttle on the verify page, so links
+     * sent from this page have their own limit (research R4).
+     */
+    private function verificationLinkLimitReached(): bool
+    {
+        return RateLimiter::tooManyAttempts('verification-link:'.Auth::id(), 6);
+    }
+
+    private function recordVerificationLink(): void
+    {
+        RateLimiter::hit('verification-link:'.Auth::id(), 60);
     }
 
     #[Computed]
@@ -125,6 +164,12 @@ new #[Title('Profile settings')] class extends Component {
                         @if (session('status') === 'verification-link-sent')
                             <flux:text class="mt-2 font-medium text-green-700! dark:text-green-400!">
                                 {{ __('A new verification link has been sent to your email address.') }}
+                            </flux:text>
+                        @endif
+
+                        @if (session('status') === 'verification-link-throttled')
+                            <flux:text class="mt-2 font-medium text-red-700! dark:text-red-400!">
+                                {{ __('Too many verification emails. Please try again shortly.') }}
                             </flux:text>
                         @endif
                     </div>

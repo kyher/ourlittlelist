@@ -40,6 +40,13 @@ class AdminDashboardTest extends TestCase
         return $this->actingAs(Admin::factory()->create(), 'admin')->get(route('admin.dashboard'));
     }
 
+    public function test_admins_are_not_asked_to_verify_an_email(): void
+    {
+        User::factory()->unverified()->create();
+
+        $this->viewDashboard()->assertOk();
+    }
+
     public function test_the_totals_match_the_data(): void
     {
         [$first, $second] = $this->couple();
