@@ -82,6 +82,14 @@ class FortifyServiceProvider extends ServiceProvider
             return Limit::perMinute(5)->by($throttleKey);
         });
 
+        RateLimiter::for('admin-login', function (Request $request) {
+            // This runs before validation, so a non-string email must not reach Str::lower().
+            $email = $request->input('email');
+            $throttleKey = Str::transliterate(Str::lower(is_string($email) ? $email : '').'|'.$request->ip());
+
+            return Limit::perMinute(5)->by($throttleKey);
+        });
+
         RateLimiter::for('passkeys', function (Request $request) {
             $credentialId = $request->input('credential.id');
 

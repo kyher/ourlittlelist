@@ -15,7 +15,7 @@ class EnsureUserIsInCouple
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (! $request->user()?->isInCouple()) {
+        if (! $request->user('web')?->isInCouple()) {
             return redirect()->route('partner.search')
                 ->with('status', __('Connect with your partner to start reviewing.'));
         }
