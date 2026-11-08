@@ -20,4 +20,15 @@ enum ReviewCategory: string
             self::Restaurant => __('Restaurant'),
         };
     }
+
+    public function icon(): string
+    {
+        return match ($this) {
+            self::Film => 'film',
+            self::TvShow => 'tv',
+            self::Book => 'book-open',
+            self::Food => 'cake',
+            self::Restaurant => 'building-storefront',
+        };
+    }
 }

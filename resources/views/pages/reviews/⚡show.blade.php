@@ -240,7 +240,7 @@ new #[Title('Review')] class extends Component {
             @elseif ($review)
                 <x-star-rating :stars="$review['stars']" />
                 <flux:text class="whitespace-pre-line">{{ $review['body'] }}</flux:text>
-                <flux:text size="sm" class="text-zinc-500">
+                <flux:text size="sm" class="text-zinc-500 dark:text-zinc-300">
                     {{ $review['created_at'] }}
                     @if ($review['edited'])
                         · <span data-test="review-edited">{{ __('Edited') }}</span>
@@ -277,14 +277,14 @@ new #[Title('Review')] class extends Component {
             @if ($review = $this->partnerReview)
                 <x-star-rating :stars="$review['stars']" />
                 <flux:text class="whitespace-pre-line">{{ $review['body'] }}</flux:text>
-                <flux:text size="sm" class="text-zinc-500">
+                <flux:text size="sm" class="text-zinc-500 dark:text-zinc-300">
                     {{ $review['created_at'] }}
                     @if ($review['edited'])
                         · {{ __('Edited') }}
                     @endif
                 </flux:text>
             @else
-                <flux:text class="text-zinc-500">{{ __(":name hasn't reviewed this yet.", ['name' => $this->partnerName]) }}</flux:text>
+                <flux:text class="text-zinc-500 dark:text-zinc-300">{{ __(":name hasn't reviewed this yet.", ['name' => $this->partnerName]) }}</flux:text>
             @endif
         </flux:card>
     </div>
