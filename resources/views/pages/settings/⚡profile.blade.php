@@ -2,8 +2,10 @@
 
 use App\Concerns\ProfileValidationRules;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Session;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
@@ -13,6 +15,7 @@ new #[Title('Profile settings')] class extends Component {
     use ProfileValidationRules;
 
     public string $name = '';
+    public string $username = '';
     public string $email = '';
 
     /**
@@ -21,6 +24,7 @@ new #[Title('Profile settings')] class extends Component {
     public function mount(): void
     {
         $this->name = Auth::user()->name;
+        $this->username = Auth::user()->username ?? '';
         $this->email = Auth::user()->email;
     }
 
@@ -31,17 +35,45 @@ new #[Title('Profile settings')] class extends Component {
     {
         $user = Auth::user();
 
-        $validated = $this->validate($this->profileRules($user->id));
+        $this->username = $this->normaliseUsername($this->username);
+
+        $validated = $this->validate($this->profileRules($user->id), $this->usernameMessages());
 
         $user->fill($validated);
 
-        if ($user->isDirty('email')) {
+        $emailChanged = $user->isDirty('email');
+
+        if ($emailChanged) {
+            if ($this->verificationLinkLimitReached()) {
+                $this->addError('email', __('Too many verification emails. Please try again shortly.'));
+
+                return;
+            }
+
             $user->email_verified_at = null;
         }
 
-        $user->save();
+        try {
+            $user->save();
+        } catch (UniqueConstraintViolationException $e) {
+            if (! str_contains($e->getMessage(), 'username')) {
+                throw $e;
+            }
 
-        Flux::toast(variant: 'success', text: __('Profile updated.'));
+            $this->addError('username', __('That username is taken.'));
+
+            return;
+        }
+
+        if ($emailChanged) {
+            $this->recordVerificationLink();
+
+            $user->sendEmailVerificationNotification();
+        }
+
+        Flux::toast(variant: 'success', text: $emailChanged
+            ? __('Profile updated. Check your new email address for a verification link.')
+            : __('Profile updated.'));
     }
 
     /**
@@ -52,14 +84,36 @@ new #[Title('Profile settings')] class extends Component {
         $user = Auth::user();
 
         if ($user->hasVerifiedEmail()) {
-            $this->redirectIntended(default: route('dashboard', absolute: false));
+            $this->redirectIntended(default: route('partner.search', absolute: false));
 
             return;
         }
 
+        if ($this->verificationLinkLimitReached()) {
+            Session::flash('status', 'verification-link-throttled');
+
+            return;
+        }
+
+        $this->recordVerificationLink();
+
         $user->sendEmailVerificationNotification();
 
         Session::flash('status', 'verification-link-sent');
+    }
+
+    /**
+     * Livewire actions do not pass through Fortify's throttle on the verify page, so links
+     * sent from this page have their own limit (research R4).
+     */
+    private function verificationLinkLimitReached(): bool
+    {
+        return RateLimiter::tooManyAttempts('verification-link:'.Auth::id(), 6);
+    }
+
+    private function recordVerificationLink(): void
+    {
+        RateLimiter::hit('verification-link:'.Auth::id(), 60);
     }
 
     #[Computed]
@@ -81,9 +135,18 @@ new #[Title('Profile settings')] class extends Component {
 
     <flux:heading level="2" class="sr-only">{{ __('Profile settings') }}</flux:heading>
 
-    <x-pages::settings.layout :heading="__('Profile')" :subheading="__('Update your name and email address')">
+    <x-pages::settings.layout :heading="__('Profile')" :subheading="__('Update your name, username and email address')">
         <form wire:submit="updateProfileInformation" class="my-6 w-full space-y-6">
             <flux:input wire:model="name" :label="__('Name')" type="text" required autofocus autocomplete="name" />
+
+            <flux:input
+                wire:model="username"
+                :label="__('Username')"
+                :description:trailing="__('Your partner uses this to find you.')"
+                type="text"
+                required
+                autocomplete="username"
+            />
 
             <div>
                 <flux:input wire:model="email" :label="__('Email')" type="email" required autocomplete="email" />
@@ -99,8 +162,14 @@ new #[Title('Profile settings')] class extends Component {
                         </flux:text>
 
                         @if (session('status') === 'verification-link-sent')
-                            <flux:text class="mt-2 font-medium !dark:text-green-400 !text-green-600">
+                            <flux:text class="mt-2 font-medium text-green-700! dark:text-green-400!">
                                 {{ __('A new verification link has been sent to your email address.') }}
+                            </flux:text>
+                        @endif
+
+                        @if (session('status') === 'verification-link-throttled')
+                            <flux:text class="mt-2 font-medium text-red-700! dark:text-red-400!">
+                                {{ __('Too many verification emails. Please try again shortly.') }}
                             </flux:text>
                         @endif
                     </div>

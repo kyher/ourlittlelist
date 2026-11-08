@@ -1,54 +1,177 @@
 <?php
 
+namespace Tests\Feature\Auth;
+
 use App\Models\User;
+use Illuminate\Auth\Notifications\VerifyEmail;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Exceptions;
+use Illuminate\Support\Facades\Notification;
 use Laravel\Fortify\Features;
+use PHPUnit\Framework\Attributes\DataProvider;
+use Symfony\Component\Mailer\Exception\TransportException;
+use Tests\TestCase;
 
-beforeEach(function () {
-    $this->skipUnlessFortifyHas(Features::registration());
-});
+class RegistrationTest extends TestCase
+{
+    use RefreshDatabase;
 
-test('registration screen can be rendered', function () {
-    $response = $this->get(route('register'));
+    protected function setUp(): void
+    {
+        parent::setUp();
 
-    $response->assertOk();
-});
+        $this->skipUnlessFortifyHas(Features::registration());
+    }
 
-test('new users can register', function () {
-    $response = $this->post(route('register.store'), [
-        'name' => 'John Doe',
-        'email' => 'test@example.com',
-        'password' => 'password',
-        'password_confirmation' => 'password',
-    ]);
+    /**
+     * @param  array<string, string>  $overrides
+     * @return array<string, string>
+     */
+    private function registrationPayload(array $overrides = []): array
+    {
+        return array_merge([
+            'name' => 'Harry',
+            'username' => 'harry',
+            'email' => 'harry@example.com',
+            'password' => 'password',
+            'password_confirmation' => 'password',
+        ], $overrides);
+    }
 
-    $response->assertSessionHasNoErrors()
-        ->assertRedirect(route('dashboard', absolute: false));
+    public function test_registration_screen_can_be_rendered(): void
+    {
+        $response = $this->get(route('register'));
 
-    $this->assertAuthenticated();
-});
+        $response->assertOk();
+    }
 
-test('newly registered users land on the dashboard without verifying their email', function () {
-    $this->post(route('register.store'), [
-        'name' => 'Jane Doe',
-        'email' => 'jane@example.com',
-        'password' => 'password',
-        'password_confirmation' => 'password',
-    ]);
+    public function test_new_users_can_register(): void
+    {
+        $response = $this->post(route('register.store'), [
+            'name' => 'John Doe',
+            'username' => 'johndoe',
+            'email' => 'test@example.com',
+            'password' => 'password',
+            'password_confirmation' => 'password',
+        ]);
 
-    $this->get(route('dashboard'))->assertOk();
-});
+        $response->assertSessionHasNoErrors()
+            ->assertRedirect(route('partner.search', absolute: false));
 
-test('users cannot register with an email that is already taken', function () {
-    User::factory()->create(['email' => 'taken@example.com']);
+        $this->assertAuthenticated();
+    }
 
-    $response = $this->post(route('register.store'), [
-        'name' => 'Someone Else',
-        'email' => 'taken@example.com',
-        'password' => 'password',
-        'password_confirmation' => 'password',
-    ]);
+    public function test_newly_registered_users_are_asked_to_verify_their_email(): void
+    {
+        $this->post(route('register.store'), [
+            'name' => 'Jane Doe',
+            'username' => 'janedoe',
+            'email' => 'jane@example.com',
+            'password' => 'password',
+            'password_confirmation' => 'password',
+        ]);
 
-    $response->assertSessionHasErrors('email');
-    $this->assertGuest();
-    expect(User::where('email', 'taken@example.com')->count())->toBe(1);
-});
+        $this->get(route('partner.search'))->assertRedirect(route('verification.notice'));
+    }
+
+    public function test_registering_sends_a_verification_link(): void
+    {
+        Notification::fake();
+
+        $this->post(route('register.store'), $this->registrationPayload());
+
+        Notification::assertSentTo(User::where('email', 'harry@example.com')->first(), VerifyEmail::class);
+    }
+
+    public function test_registration_survives_a_mail_failure(): void
+    {
+        Exceptions::fake();
+        Notification::shouldReceive('send')->andThrow(new TransportException('down'));
+
+        $this->post(route('register.store'), $this->registrationPayload());
+
+        $this->assertAuthenticated();
+        $this->get(route('verification.notice'))->assertOk();
+        Exceptions::assertReported(TransportException::class);
+    }
+
+    public function test_users_cannot_register_with_an_email_that_is_already_taken(): void
+    {
+        User::factory()->create(['email' => 'taken@example.com']);
+
+        $response = $this->post(route('register.store'), [
+            'name' => 'Someone Else',
+            'username' => 'someoneelse',
+            'email' => 'taken@example.com',
+            'password' => 'password',
+            'password_confirmation' => 'password',
+        ]);
+
+        $response->assertSessionHasErrors('email');
+        $this->assertGuest();
+        $this->assertSame(1, User::where('email', 'taken@example.com')->count());
+    }
+
+    public function test_registration_screen_has_a_username_field(): void
+    {
+        $this->get(route('register'))->assertSee('name="username"', false);
+    }
+
+    public function test_usernames_are_stored_trimmed_and_lowercase(): void
+    {
+        $this->post(route('register.store'), $this->registrationPayload(['username' => '  Harry ']))
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('harry', User::where('email', 'harry@example.com')->value('username'));
+    }
+
+    public function test_usernames_must_be_unique_regardless_of_case(): void
+    {
+        User::factory()->create(['username' => 'harry']);
+
+        $this->post(route('register.store'), $this->registrationPayload(['username' => 'HARRY']))
+            ->assertSessionHasErrors('username');
+
+        $this->assertGuest();
+        $this->assertSame(1, User::where('username', 'harry')->count());
+    }
+
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function badlyFormattedUsernames(): array
+    {
+        return [
+            'too short' => ['ab'],
+            'too long' => [str_repeat('a', 31)],
+            'leading underscore' => ['_harry'],
+            'contains a space' => ['har ry'],
+            'contains a hyphen' => ['har-ry'],
+        ];
+    }
+
+    #[DataProvider('badlyFormattedUsernames')]
+    public function test_usernames_must_follow_the_format_rules(string $username): void
+    {
+        $this->post(route('register.store'), $this->registrationPayload(['username' => $username]))
+            ->assertSessionHasErrors('username');
+
+        $this->assertGuest();
+    }
+
+    public function test_reserved_usernames_cannot_be_registered(): void
+    {
+        $this->post(route('register.store'), $this->registrationPayload(['username' => 'Admin']))
+            ->assertSessionHasErrors('username');
+
+        $this->assertGuest();
+    }
+
+    public function test_a_username_is_required_to_register(): void
+    {
+        $this->post(route('register.store'), $this->registrationPayload(['username' => '']))
+            ->assertSessionHasErrors('username');
+
+        $this->assertGuest();
+    }
+}

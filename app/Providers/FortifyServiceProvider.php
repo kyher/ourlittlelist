@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
+use Illuminate\Auth\Middleware\EnsureEmailIsVerified;
 use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -31,16 +32,17 @@ class FortifyServiceProvider extends ServiceProvider
         $this->configureActions();
         $this->configureViews();
         $this->configureRateLimiting();
-        $this->configurePasswordConfirmation();
+        $this->configureLivewirePersistentMiddleware();
     }
 
     /**
-     * Require a recent password confirmation for Livewire requests from pages that require one.
+     * Repeat the password confirmation and email verification checks of a page on its Livewire requests.
      */
-    private function configurePasswordConfirmation(): void
+    private function configureLivewirePersistentMiddleware(): void
     {
         Livewire::addPersistentMiddleware([
             RequirePassword::class,
+            EnsureEmailIsVerified::class,
         ]);
     }
 
@@ -78,6 +80,14 @@ class FortifyServiceProvider extends ServiceProvider
 
         RateLimiter::for('login', function (Request $request) {
             $throttleKey = Str::transliterate(Str::lower($request->input(Fortify::username())).'|'.$request->ip());
+
+            return Limit::perMinute(5)->by($throttleKey);
+        });
+
+        RateLimiter::for('admin-login', function (Request $request) {
+            // This runs before validation, so a non-string email must not reach Str::lower().
+            $email = $request->input('email');
+            $throttleKey = Str::transliterate(Str::lower(is_string($email) ? $email : '').'|'.$request->ip());
 
             return Limit::perMinute(5)->by($throttleKey);
         });
