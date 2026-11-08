@@ -32,16 +32,23 @@ The core domain unit is a couple: exactly two users who have connected with each
   more than two users.
 - Connecting MUST require consent from both users (e.g. an invite that the partner accepts);
   a user MUST NOT be added to a couple unilaterally.
-- Reviews and reviewed items MUST be visible only to members of the owning couple. Every
-  query, Livewire action, and route that reads or mutates couple data MUST be authorized via
-  Laravel policies/gates and scoped to the current user's couple.
+- Reviews and reviewed items MUST be visible only to members of the owning couple. Except for
+  the admin totals defined below, every query, Livewire action, and route that reads or
+  mutates couple data MUST be authorized via Laravel policies/gates and scoped to the current
+  user's couple.
 - A user MAY edit or delete only their own reviews; their partner's reviews are read-only
   to them.
 - Disconnecting from a couple MUST have a defined, specified outcome for existing data
   before it is implemented.
+- Admin totals are the only exception to couple scoping. A query MAY span couples only if it
+  is read-only, is reachable only by an authenticated admin account that is separate from
+  user accounts, and returns a single system-wide aggregate (e.g. a total count). It MUST NOT
+  return or display individual rows, review or item content, personal data, or any
+  per-couple breakdown. Tests MUST prove that non-admins cannot reach these totals.
 
 Rationale: this is a private space for two people; any cross-couple data leak is a
-critical defect.
+critical defect. A system-wide total reveals nothing about any couple, so operators can see
+how much the app is used without any couple's data becoming visible.
 
 ### IV. Tested Behaviour
 
@@ -108,4 +115,4 @@ or redefining a principle, MINOR for adding a principle or materially expanding 
 PATCH for clarifications and wording. All specs, plans, and reviews MUST verify compliance;
 unjustified complexity or any breach of Principle III blocks a change.
 
-**Version**: 1.1.0 | **Ratified**: 2026-11-06 | **Last Amended**: 2026-11-06
+**Version**: 1.2.0 | **Ratified**: 2026-11-06 | **Last Amended**: 2026-11-08
