@@ -229,3 +229,10 @@ safe stopping point rather than a useful release.
 3. US2: admins can log in and out, and the login is fully separated
 4. US3: the totals appear, which is the first release with visible value
 5. Polish, then open the PR into `dev`
+
+---
+
+## Phase 7: Convergence
+
+- [X] T028 Make the `admin-login` limiter in `app/Providers/FortifyServiceProvider.php` treat a non-string `email` as an empty string when building its throttle key, so `email[]=x` reaches the controller's `string` validation and returns a validation error instead of a 500, and add a regression test asserting `assertSessionHasErrors('email')` for an array email in `tests/Feature/Admin/AdminAuthenticationTest.php` per FR-012 (partial)
+- [X] T029 Add tests to `tests/Feature/Admin/AdminAuthenticationTest.php` asserting that a login with an empty or missing email, and with an empty or missing password, returns `assertSessionHasErrors` on that field and `assertGuest('admin')` per Constitution IV (partial)

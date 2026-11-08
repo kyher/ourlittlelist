@@ -6,6 +6,7 @@ use App\Models\Admin;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
@@ -96,6 +97,38 @@ class AdminAuthenticationTest extends TestCase
 
         $this->assertAuthenticated('admin');
         $this->assertGuest('web');
+    }
+
+    /**
+     * @param  array<string, string>  $input
+     */
+    #[DataProvider('incompleteLogins')]
+    public function test_an_incomplete_login_fails_validation(array $input, string $field): void
+    {
+        $this->post(route('admin.login.store'), $input)->assertSessionHasErrors($field);
+
+        $this->assertGuest('admin');
+    }
+
+    /**
+     * @return array<string, array{0: array<string, string>, 1: string}>
+     */
+    public static function incompleteLogins(): array
+    {
+        return [
+            'empty email' => [['email' => '', 'password' => 'password'], 'email'],
+            'missing email' => [['password' => 'password'], 'email'],
+            'empty password' => [['email' => 'admin@example.com', 'password' => ''], 'password'],
+            'missing password' => [['email' => 'admin@example.com'], 'password'],
+        ];
+    }
+
+    public function test_a_non_string_email_fails_validation(): void
+    {
+        $this->post(route('admin.login.store'), ['email' => ['admin@example.com'], 'password' => 'password'])
+            ->assertSessionHasErrors('email');
+
+        $this->assertGuest('admin');
     }
 
     public function test_a_guest_is_sent_to_the_admin_login(): void
