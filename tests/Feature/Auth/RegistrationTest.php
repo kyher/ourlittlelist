@@ -3,9 +3,13 @@
 namespace Tests\Feature\Auth;
 
 use App\Models\User;
+use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Exceptions;
+use Illuminate\Support\Facades\Notification;
 use Laravel\Fortify\Features;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Symfony\Component\Mailer\Exception\TransportException;
 use Tests\TestCase;
 
 class RegistrationTest extends TestCase
@@ -57,7 +61,7 @@ class RegistrationTest extends TestCase
         $this->assertAuthenticated();
     }
 
-    public function test_newly_registered_users_reach_partner_search_without_verifying_their_email(): void
+    public function test_newly_registered_users_are_asked_to_verify_their_email(): void
     {
         $this->post(route('register.store'), [
             'name' => 'Jane Doe',
@@ -67,7 +71,28 @@ class RegistrationTest extends TestCase
             'password_confirmation' => 'password',
         ]);
 
-        $this->get(route('partner.search'))->assertOk();
+        $this->get(route('partner.search'))->assertRedirect(route('verification.notice'));
+    }
+
+    public function test_registering_sends_a_verification_link(): void
+    {
+        Notification::fake();
+
+        $this->post(route('register.store'), $this->registrationPayload());
+
+        Notification::assertSentTo(User::where('email', 'harry@example.com')->first(), VerifyEmail::class);
+    }
+
+    public function test_registration_survives_a_mail_failure(): void
+    {
+        Exceptions::fake();
+        Notification::shouldReceive('send')->andThrow(new TransportException('down'));
+
+        $this->post(route('register.store'), $this->registrationPayload());
+
+        $this->assertAuthenticated();
+        $this->get(route('verification.notice'))->assertOk();
+        Exceptions::assertReported(TransportException::class);
     }
 
     public function test_users_cannot_register_with_an_email_that_is_already_taken(): void

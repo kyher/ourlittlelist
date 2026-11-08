@@ -42,6 +42,22 @@ class CouplePagesTest extends TestCase
             ->call('search');
     }
 
+    public function test_a_member_waiting_to_verify_keeps_their_couple_and_their_partner_is_unaffected(): void
+    {
+        $couple = Couple::factory()->withMembers($this->kyle, $this->harry)->create();
+        $this->kyle->refresh()->markEmailAsUnverified();
+
+        $this->actingAs($this->kyle)
+            ->get(route('couple.show'))
+            ->assertRedirect(route('verification.notice'));
+
+        $this->assertSame($couple->id, $this->kyle->fresh()->couple_id);
+
+        $this->actingAs($this->harry->refresh())
+            ->get(route('couple.show'))
+            ->assertOk();
+    }
+
     // US1 ---------------------------------------------------------------
 
     public function test_a_user_in_a_couple_is_redirected_from_search_to_their_reviews(): void
