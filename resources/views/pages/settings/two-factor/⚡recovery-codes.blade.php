@@ -55,7 +55,7 @@ new class extends Component {
             <flux:icon.lock-closed variant="outline" class="size-4"/>
             <flux:heading size="lg" level="3">{{ __('2FA recovery codes') }}</flux:heading>
         </div>
-        <flux:text variant="subtle">
+        <flux:text>
             {{ __('Recovery codes let you regain access if you lose your 2FA device. Store them in a secure password manager.') }}
         </flux:text>
     </div>
@@ -127,7 +127,7 @@ new class extends Component {
                             </div>
                         @endforeach
                     </div>
-                    <flux:text variant="subtle" class="text-xs">
+                    <flux:text class="text-xs">
                         {{ __('Each recovery code can be used once to access your account and will be removed after use. If you need more, click Regenerate codes above.') }}
                     </flux:text>
                 @endif

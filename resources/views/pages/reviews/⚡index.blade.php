@@ -210,7 +210,7 @@ new #[Title('Reviews')] class extends Component {
 
             @foreach ($this->prompts as $prompt)
                 <flux:card class="flex flex-wrap items-center gap-4" wire:key="prompt-{{ $prompt['id'] }}" data-test="review-prompt">
-                    <flux:icon.chat-bubble-left-ellipsis class="text-amber-500" />
+                    <flux:icon.chat-bubble-left-ellipsis class="text-amber-600 dark:text-amber-500" />
                     <flux:text class="min-w-0 flex-1">
                         {{ __(':partner reviewed', ['partner' => $prompt['partner_name']]) }}
                         <strong class="font-medium text-zinc-800 dark:text-white">{{ $prompt['title'] }}</strong>
@@ -287,12 +287,12 @@ new #[Title('Reviews')] class extends Component {
 
                         <dl class="grid grid-cols-[auto_auto] items-center gap-x-3 gap-y-1">
                             @foreach ([[__('You'), $item['my_stars']], [$this->partnerName, $item['partner_stars']]] as [$who, $stars])
-                                <dt class="text-sm text-zinc-600 dark:text-zinc-400">{{ $who }}</dt>
+                                <dt class="text-sm text-zinc-600 dark:text-zinc-300">{{ $who }}</dt>
                                 <dd>
                                     @if ($stars !== null)
                                         <x-star-rating :stars="$stars" />
                                     @else
-                                        <flux:text size="sm" class="text-zinc-500">{{ __('Not reviewed') }}</flux:text>
+                                        <flux:text size="sm" class="text-zinc-500 dark:text-zinc-300">{{ __('Not reviewed') }}</flux:text>
                                     @endif
                                 </dd>
                             @endforeach

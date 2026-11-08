@@ -56,7 +56,7 @@ class AppLogoTest extends TestCase
 
         $this->assertStringNotContainsString('M162.041 38.7592', $svg);
         $this->assertStringContainsString('<mask', $svg);
-        $this->assertStringContainsString('#262626', $svg);
+        $this->assertStringContainsString('#8a2252', $svg);
     }
 
     public function test_the_ico_favicon_is_a_32px_png_icon(): void

@@ -18,7 +18,7 @@
         <div class="inline-flex">
             @for ($i = 1; $i <= 5; $i++)
                 <span class="relative inline-block size-8">
-                    <flux:icon.star variant="outline" class="pointer-events-none absolute inset-0 size-8 text-zinc-300 dark:text-zinc-600" />
+                    <flux:icon.star variant="outline" class="pointer-events-none absolute inset-0 size-8 text-zinc-400" />
 
                     @foreach ([$i - 0.5, $i] as $half)
                         @php($value = (string) $half)
@@ -29,7 +29,7 @@
                             x-show="Number(hover ?? value ?? 0) >= {{ $half }}"
                             x-cloak
                         >
-                            <flux:icon.star variant="solid" class="size-8 text-amber-400" />
+                            <flux:icon.star variant="solid" class="size-8 text-amber-600 dark:text-amber-400" />
                         </span>
                     @endforeach
 
@@ -49,7 +49,7 @@
                                 data-test="star-{{ $value }}"
                             >
                             <span class="sr-only">{{ trans_choice(':count star|:count stars', $half == 1 ? 1 : 2, ['count' => $value]) }}</span>
-                            <span class="absolute inset-0 rounded peer-focus-visible:ring-2 peer-focus-visible:ring-amber-500"></span>
+                            <span class="absolute inset-0 rounded peer-focus-visible:ring-2 peer-focus-visible:ring-accent"></span>
                         </label>
                     @endforeach
                 </span>
