@@ -15,7 +15,7 @@ class EnsureUserHasUsername
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if ($request->user() && $request->user()->username === null) {
+        if ($request->user('web') && $request->user('web')->username === null) {
             return redirect()->guest(route('username.create'));
         }
 

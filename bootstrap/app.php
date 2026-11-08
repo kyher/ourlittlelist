@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\EnsureUserHasUsername;
 use App\Http\Middleware\EnsureUserIsInCouple;
+use App\Http\Middleware\UseAdminSessionCookie;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -18,6 +19,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'has-username' => EnsureUserHasUsername::class,
             'in-couple' => EnsureUserIsInCouple::class,
         ]);
+
+        $middleware->web(prepend: [UseAdminSessionCookie::class]);
+
+        $middleware->redirectGuestsTo(
+            fn (Request $request) => $request->is('admin', 'admin/*') ? route('admin.login') : route('login'),
+        );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

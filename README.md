@@ -43,6 +43,7 @@ typing, e.g. `alias dc='docker compose exec app'`.
 | Run the test suite | `docker compose exec app php artisan test` |
 | Fix code style | `docker compose exec app composer lint` |
 | Run an Artisan command | `docker compose exec app php artisan <command>` |
+| Create an admin account (prompts for a password; log in at `/admin/login`) | `docker compose exec app php artisan admin:create <email>` |
 | Rebuild the database from scratch (**deletes all data**) | `docker compose exec app php artisan migrate:fresh` |
 | Build front-end assets once (without the dev server) | `docker compose exec vite npm run build` |
 | Open a shell in the app container | `docker compose exec app bash` |
